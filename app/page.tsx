@@ -114,7 +114,7 @@ export default function Home() {
                 chartInstance.current.destroy(); // Destruye el gráfico cuando se desmonte el componente
             }
         };
-    }, []); // Solo ejecutar este effect una vez al montar
+    }); // Solo ejecutar este effect una vez al montar
 
     return (
         <div className="min-h-screen bg-gray-100 p-8 flex flex-col items-center">

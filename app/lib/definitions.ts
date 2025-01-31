@@ -18,3 +18,5 @@ export type BollingerBands = {
     upperBand: number;
     lowerBand: number;
 };
+
+export type BinanceCandle = [number, string, string, string, string] //tipo para los datos históricos de binance

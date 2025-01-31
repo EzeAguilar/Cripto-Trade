@@ -1,5 +1,5 @@
 import axios from "axios";
-import {CryptoSymbol, HistoricalData, BollingerBands, Indicators} from "./definitions";
+import {CryptoSymbol, HistoricalData, BollingerBands, Indicators, BinanceCandle} from "./definitions";
 
 const BinanceAPI = {
     historicalData: "https://api.binance.com/api/v3/klines",
@@ -9,7 +9,7 @@ const BinanceAPI = {
 export const fetchHistoricalData = async (symbol: CryptoSymbol): Promise<HistoricalData[]> => {
     const params = { symbol, interval: "1d", limit: 60 };
     const response = await axios.get(BinanceAPI.historicalData, { params });
-    return response.data.map(([time, open, high, low, close]: any) => ({
+    return response.data.map(([time, open, high, low, close]: BinanceCandle) => ({
         time: new Date(time),
         open: parseFloat(open),
         high: parseFloat(high),
