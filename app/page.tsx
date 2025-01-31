@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Chart from "chart.js/auto";
+import Link from "next/link";
 
 // Tipos para los datos
 type PriceData = number[]; // Array de precios
@@ -117,27 +118,48 @@ export default function Home() {
     }); // Solo ejecutar este effect una vez al montar
 
     return (
-        <div className="min-h-screen bg-gray-100 p-8 flex flex-col items-center">
-            <h1 className="text-3xl font-bold text-gray-800 mb-8">Gráfico en tiempo real de Bitcoin</h1>
+        <div className="min-h-screen bg-gray-100 p-8 flex flex-col md:flex-row">
 
-            {/* Contenedor del gráfico */}
-            <div className="w-full max-w-4xl mb-8">
-                <canvas ref={chartRef} id="bitcoinChart" className="w-full h-96" />
+            {/* Contenido principal */}
+            <div className="flex-1 flex flex-col items-center">
+                <h1 className="text-3xl font-bold text-gray-800 mb-8">Gráfico en tiempo real de Bitcoin</h1>
+
+                <div className="w-full max-w-4xl mb-8">
+                    <canvas ref={chartRef} id="bitcoinChart" className="w-full h-96" />
+                </div>
+
+                <div className="flex flex-wrap justify-center gap-6">
+                    <div className="bg-white shadow-lg rounded-lg p-6 w-72">
+                        <h3 className="text-xl text-blue-700 mb-4">Señales Generadas por Coinalert</h3>
+                        <p className="text-sm text-gray-600">Compra: 38,000 USD - 15/03/2024</p>
+                        <p className="text-sm text-gray-600">Venta: 42,000 USD - 20/03/2024</p>
+                        <p className="text-sm text-gray-600">Compra: 40,000 USD - 25/03/2024</p>
+                    </div>
+                    <div className="bg-white shadow-lg rounded-lg p-6 w-72">
+                        <h3 className="text-xl text-blue-700 mb-4">Señales Operadas por el Usuario</h3>
+                        <p className="text-sm text-gray-600">Compra: 39,000 USD - 17/03/2024</p>
+                        <p className="text-sm text-gray-600">Venta: 41,500 USD - 21/03/2024</p>
+                    </div>
+                </div>
             </div>
 
-            {/* Contenedor de las señales */}
-            <div className="flex flex-wrap justify-center gap-6">
-                <div className="bg-white shadow-lg rounded-lg p-6 w-72">
-                    <h3 className="text-xl text-blue-700 mb-4">Señales Generadas por Coinalert</h3>
-                    <p className="text-sm text-gray-600">Compra: 38,000 USD - 15/03/2024</p>
-                    <p className="text-sm text-gray-600">Venta: 42,000 USD - 20/03/2024</p>
-                    <p className="text-sm text-gray-600">Compra: 40,000 USD - 25/03/2024</p>
-                </div>
-                <div className="bg-white shadow-lg rounded-lg p-6 w-72">
-                    <h3 className="text-xl text-blue-700 mb-4">Señales Operadas por el Usuario</h3>
-                    <p className="text-sm text-gray-600">Compra: 39,000 USD - 17/03/2024</p>
-                    <p className="text-sm text-gray-600">Venta: 41,500 USD - 21/03/2024</p>
-                </div>
+            {/* Sidebar con links dinámicos (arriba en móvil, al costado en escritorio) */}
+            <div className="bg-white shadow-lg rounded-lg p-6 mb-6 md:mb-0 md:ml-6 w-fit h-fit">
+                <h3 className="text-xl text-black font-bold mb-4">Análisis</h3>
+                <ul className="space-y-2">
+                    <li>
+                        <Link href="/analisis/bitcoin" className="text-blue-700 hover:underline">LINK BITCOIN</Link>
+                    </li>
+                    <li>
+                        <Link href="/analisis/bnb" className="text-blue-700 hover:underline">LINK BNB</Link>
+                    </li>
+                    <li>
+                        <Link href="/analisis/etherium" className="text-blue-700 hover:underline">LINK ETHERIUM</Link>
+                    </li>
+                    <li>
+                        <Link href="/analisis/cardano" className="text-blue-700 hover:underline">LINK CARDANO</Link>
+                    </li>
+                </ul>
             </div>
         </div>
     );
