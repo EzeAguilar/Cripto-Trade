@@ -118,7 +118,7 @@ export default function Home() {
     }); // Solo ejecutar este effect una vez al montar
 
     return (
-        <div className="min-h-screen bg-gray-100 p-8 flex flex-col md:flex-row">
+        <div className="min-h-screen bg-gray-100 p-8 flex flex-col items-center md:flex-row md:items-start">
 
             {/* Contenido principal */}
             <div className="flex-1 flex flex-col items-center">
@@ -144,7 +144,7 @@ export default function Home() {
             </div>
 
             {/* Sidebar con links dinámicos (arriba en móvil, al costado en escritorio) */}
-            <div className="bg-white shadow-lg rounded-lg p-6 mb-6 md:mb-0 md:ml-6 w-fit h-fit">
+            <div className="bg-white shadow-lg rounded-lg p-6 mt-6 md:mb-0 md:ml-6 w-fit h-fit">
                 <h3 className="text-xl text-black font-bold mb-4">Análisis</h3>
                 <ul className="space-y-2">
                     <li>
