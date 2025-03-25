@@ -1,192 +1,167 @@
 "use client"
 
-import { useState, useEffect } from "react"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Tabs,TabsList, TabsTrigger } from "@/components/ui/tabs"
-import CryptoChart from "@/components/crypto-chart"
-import CryptoSelector from "@/components/crypto-selector"
-import TechnicalAnalysis from "@/components/technical-analysis"
-import AlertSettings from "@/components/alert-settings"
-import { useToast } from "@/components/ui/use-toast"
+import { useEffect, useRef, useState } from "react";
+import Chart from "chart.js/auto";
+import Link from "next/link";
+
+// Tipos para los datos
+type PriceData = number[]; // Array de precios
+type TimeLabels = string[]; // Array de etiquetas de tiempo
+
+interface WebSocketMessage {
+    p: string; // El precio de Bitcoin en formato string desde Binance
+}
+function calcularHoras(): string[] {
+    const horas: string[] = [];
+    let fecha: Date = new Date(); // Hora actual
+
+    for (let i = 0; i < 6; i++) {
+        horas.push(fecha.toLocaleTimeString()); // Añadir hora actual en formato local
+        fecha = new Date(fecha.getTime() + 1000); // Sumar 1 milisegundo
+    }
+
+    return horas;
+}
 
 export default function Home() {
-  const [selectedCrypto, setSelectedCrypto] = useState("BTCUSDT")
-  const [timeframe, setTimeframe] = useState("1h")
-  const [cryptoData, setCryptoData] = useState([])
-  const [availablePairs, setAvailablePairs] = useState([])
-  const [isLoading, setIsLoading] = useState(true)
-  const { toast } = useToast()
+    const [priceData, setPriceData] = useState<PriceData>([35000, 37000, 39000, 42000, 41000, 40000]); // Precios iniciales
+    const [timeLabels, setTimeLabels] = useState<TimeLabels>(calcularHoras()); // Inicializa con las horas calculadas
+    const chartRef = useRef<HTMLCanvasElement | null>(null);
+    const chartInstance = useRef<Chart | null>(null); // Ref para mantener la instancia del gráfico
 
-  useEffect(() => {
-    const loadInitialData = async () => {
-      try {
-        // Fetch available pairs
-        const pairsResponse = await fetch("/api/binance?action=getPairs")
-        if (!pairsResponse.ok) {
-          throw new Error("Failed to fetch available pairs")
-        }
-        const pairsData = await pairsResponse.json()
-        if (pairsData.success) {
-          setAvailablePairs(pairsData.data)
-        } else {
-          throw new Error(pairsData.error || "Failed to fetch available pairs")
-        }
+    useEffect(() => {
+        // Inicializa el gráfico de Bitcoin solo una vez
+        const ctx = chartRef.current?.getContext("2d");
+        if (!ctx) return;
 
-        // Fetch initial crypto data
-        const dataResponse = await fetch(
-          `/api/binance?action=getKlines&symbol=${selectedCrypto}&timeframe=${timeframe}`,
-        )
-        if (!dataResponse.ok) {
-          throw new Error("Failed to fetch crypto data")
-        }
-        const data = await dataResponse.json()
-        if (data.success) {
-          setCryptoData(data.data)
-        } else {
-          throw new Error(data.error || "Failed to fetch crypto data")
-        }
-      } catch (error: any) {
-        toast({
-          title: "Error",
-          description: error.message || "Failed to load cryptocurrency data",
-          variant: "destructive",
-        })
-      } finally {
-        setIsLoading(false)
-      }
-    }
+        chartInstance.current = new Chart(ctx, {
+            type: "line",
+            data: {
+                labels: timeLabels,
+                datasets: [
+                    {
+                        label: "Precio de Bitcoin",
+                        data: priceData,
+                        borderColor: "#1E3A8A",
+                        borderWidth: 2,
+                        fill: false,
+                        pointRadius: 5,
+                        pointBackgroundColor: "#1E3A8A",
+                        tension: 0.3, // Agrega suavidad a las líneas
+                    },
+                ],
+            },
+            options: {
+                responsive: true,
+                scales: {
+                    y: {
+                        beginAtZero: false,
+                        title: {
+                            display: true,
+                            text: "Precio en USD",
+                        },
+                        ticks: {
+                            callback: function (value) {
+                                return `$${value}`;
+                            },
+                        },
+                    },
+                    x: {
+                        title: {
+                            display: true,
+                            text: "Hora",
+                        },
+                    },
+                },
+            },
+        });
 
-    loadInitialData()
-  }, [toast])
+        // Conexión WebSocket a la API de Binance para obtener el precio de Bitcoin en tiempo real
+        const socket = new WebSocket("wss://stream.binance.com:9443/ws/btcusdt@trade");
 
-  useEffect(() => {
-    const loadCryptoData = async () => {
-      setIsLoading(true)
-      try {
-        const response = await fetch(`/api/binance?action=getKlines&symbol=${selectedCrypto}&timeframe=${timeframe}`)
-        if (!response.ok) {
-          throw new Error("Failed to fetch crypto data")
-        }
-        const data = await response.json()
-        if (data.success) {
-          setCryptoData(data.data)
-        } else {
-          throw new Error(data.error || "Failed to fetch crypto data")
-        }
-      } catch (error: any) {
-        toast({
-          title: "Error",
-          description: error.message || "Failed to load cryptocurrency data",
-          variant: "destructive",
-        })
-      } finally {
-        setIsLoading(false)
-      }
-    }
+        socket.onmessage = (event: MessageEvent) => {
+            const message: WebSocketMessage = JSON.parse(event.data); // El mensaje contiene el precio
+            const newPrice = parseFloat(message.p); // Extraemos el precio de la respuesta
+            const currentTime = new Date().toLocaleTimeString(); // Hora actual
 
-    loadCryptoData()
-  }, [selectedCrypto, timeframe, toast])
+            setPriceData((prevData) => {
+                // Mantén los últimos 6 precios
+                const newData = [...prevData.slice(1), newPrice];
 
-  const handleCryptoChange = (crypto: string) => {
-    setSelectedCrypto(crypto)
-  }
+                // Actualiza el gráfico solo si ya está inicializado
+                if (chartInstance.current) {
+                    chartInstance.current.data.datasets[0].data = newData;
+                    chartInstance.current.update();
+                }
+                return newData;
+            });
 
-  const handleTimeframeChange = (tf: string) => {
-    setTimeframe(tf)
-  }
+            setTimeLabels((prevLabels) => {
+                // Mantén las últimas 6 etiquetas de tiempo
+                const newLabels = [...prevLabels.slice(1), currentTime];
 
-  return (
-    <main className="container mx-auto py-6 px-4">
-      <h1 className="text-3xl font-bold mb-6">Coinalert</h1>
-      <p className="text-muted-foreground mb-8">Automated cryptocurrency trading platform for beginners</p>
+                if (chartInstance.current) {
+                    chartInstance.current.data.labels = newLabels;
+                    chartInstance.current.update();
+                }
+                return newLabels;
+            });
+        };
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2">
-          <Card className="mb-6">
-            <CardHeader className="pb-2">
-              <div className="flex justify-between items-center">
-                <CardTitle>Market Chart</CardTitle>
-                <div className="flex gap-2">
-                  <Tabs>
-                  <TabsList>
-                    <TabsTrigger
-                      value="15m"
-                      onClick={() => handleTimeframeChange("15m")}
-                      className={timeframe === "15m" ? "bg-primary text-primary-foreground" : ""}
-                    >
-                      15m
-                    </TabsTrigger>
-                    <TabsTrigger
-                      value="1h"
-                      onClick={() => handleTimeframeChange("1h")}
-                      className={timeframe === "1h" ? "bg-primary text-primary-foreground" : ""}
-                    >
-                      1h
-                    </TabsTrigger>
-                    <TabsTrigger
-                      value="4h"
-                      onClick={() => handleTimeframeChange("4h")}
-                      className={timeframe === "4h" ? "bg-primary text-primary-foreground" : ""}
-                    >
-                      4h
-                    </TabsTrigger>
-                    <TabsTrigger
-                      value="1d"
-                      onClick={() => handleTimeframeChange("1d")}
-                      className={timeframe === "1d" ? "bg-primary text-primary-foreground" : ""}
-                    >
-                      1d
-                    </TabsTrigger>
-                  </TabsList>
-                  </Tabs>
+        // Limpiar WebSocket al desmontar el componente
+        return () => {
+            socket.close();
+            if (chartInstance.current) {
+                chartInstance.current.destroy(); // Destruye el gráfico cuando se desmonte el componente
+            }
+        };
+    }); // Solo ejecutar este effect una vez al montar
+
+    return (
+        <div className="min-h-screen bg-gray-100 p-8 flex flex-col items-center md:flex-row md:items-start">
+
+            {/* Contenido principal */}
+            <div className="flex-1 flex flex-col items-center">
+                <h1 className="text-3xl font-bold text-gray-800 mb-8">Gráfico en tiempo real de Bitcoin</h1>
+
+                <div className="w-full max-w-4xl mb-8">
+                    <canvas ref={chartRef} id="bitcoinChart" className="w-full h-96" />
                 </div>
-              </div>
-              <CardDescription>{selectedCrypto} price chart</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <CryptoChart data={cryptoData} isLoading={isLoading} symbol={selectedCrypto} timeframe={timeframe} />
-            </CardContent>
-          </Card>
 
-          <Card>
-            <CardHeader>
-              <CardTitle>Technical Analysis</CardTitle>
-              <CardDescription>Automated analysis based on multiple indicators</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <TechnicalAnalysis data={cryptoData} isLoading={isLoading} symbol={selectedCrypto} />
-            </CardContent>
-          </Card>
+                <div className="flex flex-wrap justify-center gap-6">
+                    <div className="bg-white shadow-lg rounded-lg p-6 w-72">
+                        <h3 className="text-xl text-blue-700 mb-4">Señales Generadas por Coinalert</h3>
+                        <p className="text-sm text-gray-600">Compra: 38,000 USD - 15/03/2024</p>
+                        <p className="text-sm text-gray-600">Venta: 42,000 USD - 20/03/2024</p>
+                        <p className="text-sm text-gray-600">Compra: 40,000 USD - 25/03/2024</p>
+                    </div>
+                    <div className="bg-white shadow-lg rounded-lg p-6 w-72">
+                        <h3 className="text-xl text-blue-700 mb-4">Señales Operadas por el Usuario</h3>
+                        <p className="text-sm text-gray-600">Compra: 39,000 USD - 17/03/2024</p>
+                        <p className="text-sm text-gray-600">Venta: 41,500 USD - 21/03/2024</p>
+                    </div>
+                </div>
+            </div>
+
+            {/* Sidebar con links dinámicos (arriba en móvil, al costado en escritorio) */}
+            <div className="bg-white shadow-lg rounded-lg p-6 mt-6 md:mb-0 md:ml-6 w-fit h-fit">
+                <h3 className="text-xl text-black font-bold mb-4">Análisis</h3>
+                <ul className="space-y-2">
+                    <li>
+                        <Link href="/analisis/bitcoin" className="text-blue-700 hover:underline">LINK BITCOIN</Link>
+                    </li>
+                    <li>
+                        <Link href="/analisis/bnb" className="text-blue-700 hover:underline">LINK BNB</Link>
+                    </li>
+                    <li>
+                        <Link href="/analisis/etherium" className="text-blue-700 hover:underline">LINK ETHERIUM</Link>
+                    </li>
+                    <li>
+                        <Link href="/analisis/cardano" className="text-blue-700 hover:underline">LINK CARDANO</Link>
+                    </li>
+                </ul>
+            </div>
         </div>
-
-        <div>
-          <Card className="mb-6">
-            <CardHeader>
-              <CardTitle>Select Cryptocurrency</CardTitle>
-              <CardDescription>Choose from available trading pairs</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <CryptoSelector
-                availablePairs={availablePairs}
-                selectedCrypto={selectedCrypto}
-                onCryptoChange={handleCryptoChange}
-                isLoading={isLoading}
-              />
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Alert Settings</CardTitle>
-              <CardDescription>Configure your trading parameters</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <AlertSettings symbol={selectedCrypto} />
-            </CardContent>
-          </Card>
-        </div>
-      </div>
-    </main>
-  )
+    );
 }
 
